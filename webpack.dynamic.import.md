@@ -71,8 +71,11 @@ __webpack_require__.e = function requireEnsure(chunkId) {
         return Promise.all(promises);
 }
 ```
+当前环境目标未类浏览器环境。
+整体流程， installedChunks[chunkId] 判断模块状态。如未加载，执行下载流程。在web环境下
+采用创建script标签，jsonp方式去拉取。
 
-
+在继续看下__webpack_require__.e相关引用。
 ```javascript
 //webpack/lib/APIPlugin.js
 const REPLACEMENTS = {
@@ -84,7 +87,58 @@ const REPLACEMENTS = {
 }
 ```
 
+上面的生成代码__webpack_require__.e 代码生成之处。
 
+```javascript
+class WebpackOptionsApply extends OptionsApply {
+   process(options, compiler) {
+       if (typeof options.target === "string") {
+           let JsonpTemplatePlugin;
+			let FetchCompileWasmTemplatePlugin;
+			let ReadFileCompileWasmTemplatePlugin;
+			let NodeSourcePlugin;
+			let NodeTargetPlugin;
+			let NodeTemplatePlugin;
+
+			switch (options.target) {
+				case "web":
+					JsonpTemplatePlugin = require("./web/JsonpTemplatePlugin");
+					FetchCompileWasmTemplatePlugin = require("./web/FetchCompileWasmTemplatePlugin");
+					NodeSourcePlugin = require("./node/NodeSourcePlugin");
+					new JsonpTemplatePlugin().apply(compiler);
+					new FetchCompileWasmTemplatePlugin({
+						mangleImports: options.optimization.mangleWasmImports
+					}).apply(compiler);
+					new FunctionModulePlugin().apply(compiler);
+					new NodeSourcePlugin(options.node).apply(compiler);
+					new LoaderTargetPlugin(options.target).apply(compiler);
+                    break;
+            .........
+       }
+   } 
+}
+```
+```javascript
+"use strict";
+
+const JsonpMainTemplatePlugin = require("./JsonpMainTemplatePlugin");
+const JsonpChunkTemplatePlugin = require("./JsonpChunkTemplatePlugin");
+const JsonpHotUpdateChunkTemplatePlugin = require("./JsonpHotUpdateChunkTemplatePlugin");
+
+class JsonpTemplatePlugin {
+	apply(compiler) {
+		compiler.hooks.thisCompilation.tap("JsonpTemplatePlugin", compilation => {
+			new JsonpMainTemplatePlugin().apply(compilation.mainTemplate);
+			new JsonpChunkTemplatePlugin().apply(compilation.chunkTemplate);
+			new JsonpHotUpdateChunkTemplatePlugin().apply(
+				compilation.hotUpdateChunkTemplate
+			);
+		});
+	}
+}
+
+module.exports = JsonpTemplatePlugin;
+```
 ```javascript
 //webpack/MainTemplate.js
 // require function shortcuts:
@@ -103,4 +157,54 @@ const REPLACEMENTS = {
 // __webpack_require__.w = an object containing all installed WebAssembly.Instance export objects keyed by module id
 // __webpack_require__.oe = the uncaught error handler for the webpack runtime
 // __webpack_require__.nc = the script nonce
+```
+```javascript
+module.exports = class MainTemplate extends Tapable {
+    constructor(outputOptions) {
+        this.hooks.requireExtensions.tap("MainTemplate", (source, chunk, hash) => {
+            const buf = [];
+			const chunkMaps = chunk.getChunkMaps(); 
+            // Check if there are non initial chunks which need to be imported using require-ensure
+            if (Object.keys(chunkMaps.hash).length) {
+                buf.push("// This file contains only the entry chunk.");
+                buf.push("// The chunk loading function for additional chunks");
+				buf.push(`${this.requireFn}.e = function requireEnsure(chunkId) {`);
+				buf.push(Template.indent("var promises = [];"));
+				buf.push(
+					Template.indent(
+						this.hooks.requireEnsure.call("", chunk, hash, "chunkId")
+					)
+				);
+				buf.push(Template.indent("return Promise.all(promises);"));
+				buf.push("};");
+            }
+            ....
+        }
+
+        this.requireFn = "__webpack_require__";
+    }   
+}
+```
+```javascript
+//webpack/lib/web/JsonpMainTemplatePlugin.js
+class JsonpMainTemplatePlugin {
+    mainTemplate.hooks.requireEnsure.tap(
+        "JsonpMainTemplatePlugin load",
+        (source, chunk, hash) => {
+            return Template.asString([
+                    source,
+                    ......
+                    mainTemplate.hooks.jsonpScript.call("", chunk, hash）
+                ])
+        }
+    )
+
+    mainTemplate.hooks.jsonpScript.tap(
+			"JsonpMainTemplatePlugin",
+			(_, chunk, hash) => {
+                ...
+                //下载script的相关逻辑
+            })
+
+}
 ```
