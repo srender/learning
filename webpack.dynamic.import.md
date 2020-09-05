@@ -169,6 +169,7 @@ module.exports = JsonpTemplatePlugin;
 // __webpack_require__.oe = the uncaught error handler for the webpack runtime
 // __webpack_require__.nc = the script nonce
 ```
+执行 this.hooks.requireExtension 内部调用hooks.requireEnsure。相关代码写入过程
 ```javascript
 //webpack/MainTemplate.js
 module.exports = class MainTemplate extends Tapable {
@@ -197,6 +198,8 @@ module.exports = class MainTemplate extends Tapable {
     }   
 }
 ```
+chunk相关逻辑，主要用于判断当前chunk是否下载。
+jsonpScript 通过jsonp下载chunk代码
 ```javascript
 //webpack/lib/web/JsonpMainTemplatePlugin.js
 class JsonpMainTemplatePlugin {
