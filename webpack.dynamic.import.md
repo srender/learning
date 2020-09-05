@@ -88,7 +88,7 @@ const REPLACEMENTS = {
 ```
 
 上面的生成代码__webpack_require__.e 代码生成之处。
-
+首先查看编译环节类web环境如何定义。如果是web环境，就引入JsonpTemplatePlugin。
 ```javascript
 class WebpackOptionsApply extends OptionsApply {
    process(options, compiler) {
@@ -119,8 +119,18 @@ class WebpackOptionsApply extends OptionsApply {
 }
 ```
 ```javascript
+//lib/Compilation.js
+const MainTemplate = require("./MainTemplate");
+class Compilation extends Tapable {
+    this.outputOptions = options && options.output;
+    this.mainTemplate = new MainTemplate(this.outputOptions);
+}
+```
+看下JsonpTemplatePlugin的定义，引入了以下三个模块注册相应的hooks。
+JsonpMainTemplatePlugin，JsonpChunkTemplatePlugin，JsonpHotUpdateChunkTemplatePlugin
+```javascript
 "use strict";
-
+// ./web/JsonpTemplatePlugin
 const JsonpMainTemplatePlugin = require("./JsonpMainTemplatePlugin");
 const JsonpChunkTemplatePlugin = require("./JsonpChunkTemplatePlugin");
 const JsonpHotUpdateChunkTemplatePlugin = require("./JsonpHotUpdateChunkTemplatePlugin");
@@ -139,6 +149,7 @@ class JsonpTemplatePlugin {
 
 module.exports = JsonpTemplatePlugin;
 ```
+与该段代码生成的是
 ```javascript
 //webpack/MainTemplate.js
 // require function shortcuts:
@@ -159,6 +170,7 @@ module.exports = JsonpTemplatePlugin;
 // __webpack_require__.nc = the script nonce
 ```
 ```javascript
+//webpack/MainTemplate.js
 module.exports = class MainTemplate extends Tapable {
     constructor(outputOptions) {
         this.hooks.requireExtensions.tap("MainTemplate", (source, chunk, hash) => {
