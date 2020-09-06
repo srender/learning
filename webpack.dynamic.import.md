@@ -151,7 +151,7 @@ module.exports = JsonpTemplatePlugin;
 ```
 与该段代码生成的是
 ```javascript
-//webpack/MainTemplate.js
+//webpack/lib/MainTemplate.js
 // require function shortcuts:
 // __webpack_require__.s = the module id of the entry point
 // __webpack_require__.c = the module cache
@@ -171,7 +171,7 @@ module.exports = JsonpTemplatePlugin;
 ```
 执行 this.hooks.requireExtension 内部调用hooks.requireEnsure。相关代码写入过程
 ```javascript
-//webpack/MainTemplate.js
+//webpack/lib/MainTemplate.js
 module.exports = class MainTemplate extends Tapable {
     constructor(outputOptions) {
         this.hooks.requireExtensions.tap("MainTemplate", (source, chunk, hash) => {
@@ -201,7 +201,7 @@ module.exports = class MainTemplate extends Tapable {
 chunk相关逻辑，主要用于判断当前chunk是否下载。
 jsonpScript 通过jsonp下载chunk代码
 ```javascript
-//webpack/lib/web/JsonpMainTemplatePlugin.js
+//lib/web/JsonpMainTemplatePlugin.js
 class JsonpMainTemplatePlugin {
     mainTemplate.hooks.requireEnsure.tap(
         "JsonpMainTemplatePlugin load",
