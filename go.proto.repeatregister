@@ -1,0 +1,2 @@
+#About Proto Repeat Register
+两个文件使用了相同的.proto文件，显然会产生“已注册重复”错误
